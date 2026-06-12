@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2c1a0e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Patois" />
+  <title>Patois Mellois — Dictionnaire Sonore</title>
+  <link rel="manifest" href="manifest.json" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream: #f5f0e8;
+      --brown-dark: #2c1a0e;
+      --brown-mid: #6b3f1e;
+      --brown-light: #a0623a;
+      --gold: #c9913d;
+      --gold-light: #e8c07a;
+      --ink: #1a1008;
+      --paper: #faf7f2;
+      --red-rec: #c0392b;
+      --green-ok: #5a7a3a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background-color: var(--cream);
+      background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(201,145,61,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 90%, rgba(107,63,30,0.07) 0%, transparent 60%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f0e8'/%3E%3Ccircle cx='1' cy='1' r='0.6' fill='%23c9913d' opacity='0.08'/%3E%3C/svg%3E");
+      min-height: 100vh;
+      font-family: 'Lato', sans-serif;
+      color: var(--ink);
+      padding: 1.5rem 1rem;
+      /* Safe area: notch + barre de navigation Android */
+      padding-top: max(1.5rem, env(safe-area-inset-top));
+      padding-bottom: max(4rem, calc(2rem + env(safe-area-inset-bottom)));
+      padding-left: max(1rem, env(safe-area-inset-left));
+      padding-right: max(1rem, env(safe-area-inset-right));
+    }
+
+    /* ── HEADER ──────────────────────────────────────────────── */
+    header { text-align: center; margin-bottom: 1.8rem; }
+    .ornament { color: var(--gold); font-size: 1.2rem; letter-spacing: 0.5rem; opacity: 0.7; }
+    h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 6vw, 3rem); font-weight: 700; color: var(--brown-dark); line-height: 1.1; margin: 0.3rem 0; }
+    h1 em { font-style: italic; color: var(--brown-mid); }
+    .subtitle { font-size: 0.75rem; letter-spacing: 0.2rem; text-transform: uppercase; color: var(--brown-light); margin-top: 0.3rem; }
+    .divider { display: flex; align-items: center; gap: 1rem; margin: 1rem auto; max-width: 260px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--gold); opacity: 0.5; }
+    .divider-icon { color: var(--gold); font-size: 0.9rem; }
+
+    /* Bouton d'installation PWA (masqué par défaut, affiché par JS) */
+    .install-btn {
+      display: none;
+      margin: 0.3rem auto 0;
+      background: var(--gold);
+      color: var(--brown-dark);
+      border: none;
+      border-radius: 20px;
+      padding: 0.5rem 1.3rem;
+      font-family: 'Lato', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .install-btn:active { background: var(--gold-light); }
+
+    /* ── CARTE FORMULAIRE ───────────────────────────────────── */
+    .card {
+      background: var(--paper);
+      border: 1px solid rgba(201,145,61,0.25);
+      border-radius: 4px;
+      box-shadow: 0 4px 30px rgba(44,26,14,0.08), 0 1px 4px rgba(44,26,14,0.05);
+      max-width: 580px;
+      margin: 0 auto 2rem;
+      padding: 1.6rem 1.4rem;
+      position: relative;
+    }
+    .card::before {
+      content: ''; position: absolute; inset: 6px;
+      border: 1px solid rgba(201,145,61,0.12); border-radius: 2px; pointer-events: none;
+    }
+
+    /* ── CHAMPS ──────────────────────────────────────────────── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 0.9rem;
+      margin-bottom: 1.2rem;
+    }
+    /* Sur très petit écran, empiler verticalement */
+    @media (max-width: 360px) {
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+      .arrow { text-align: center; padding-bottom: 0; transform: rotate(90deg); }
+    }
+
+    .field label {
+      display: block; font-size: 0.7rem; letter-spacing: 0.18rem;
+      text-transform: uppercase; color: var(--brown-light); margin-bottom: 0.4rem; font-weight: 700;
+    }
+    .field input {
+      width: 100%; background: var(--cream);
+      border: 1px solid rgba(107,63,30,0.25); border-radius: 3px;
+      padding: 0.7rem 0.9rem;
+      font-family: 'Playfair Display', serif;
+      font-size: 16px; /* min 16px : évite le zoom automatique Android/iOS */
+      color: var(--ink); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-height: 44px;
+    }
+    .field input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,145,61,0.12); }
+    .field input::placeholder { color: rgba(107,63,30,0.35); font-style: italic; }
+    .arrow { font-size: 1.4rem; color: var(--gold); padding-bottom: 0.5rem; user-select: none; }
+
+    /* ── ENREGISTREUR AUDIO ──────────────────────────────────── */
+    .audio-section {
+      margin-bottom: 1.2rem;
+      border: 1px dashed rgba(201,145,61,0.35);
+      border-radius: 4px;
+      padding: 0.9rem 1rem;
+      background: rgba(201,145,61,0.04);
+    }
+    .audio-label {
+      font-size: 0.7rem; letter-spacing: 0.18rem;
+      text-transform: uppercase; color: var(--brown-light); font-weight: 700;
+      margin-bottom: 0.75rem; display: block;
+    }
+    .recorder-controls {
+      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+    }
+    .btn-rec {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0 1.1rem;
+      height: 44px;
+      border: none; border-radius: 3px; cursor: pointer;
+      font-family: 'Lato', sans-serif; font-size: 0.78rem;
+      font-weight: 700; letter-spacing: 0.1rem; text-transform: uppercase;
+      transition: all 0.2s;
+    }
+    .btn-rec.start { background: var(--red-rec); color: #fff; }
+    .btn-rec.start:active { background: #a93226; }
+    .btn-rec.stop  { background: var(--brown-dark); color: var(--gold-light); }
+    .btn-rec.stop:active  { background: var(--brown-mid); }
+    .btn-rec:disabled { opacity: 0.4; pointer-events: none; }
+
+    .rec-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #fff; display: inline-block;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+    .rec-timer {
+      font-size: 0.85rem; color: var(--red-rec); font-weight: 700;
+      font-variant-numeric: tabular-nums; min-width: 40px; display: none;
+    }
+    .rec-timer.visible { display: block; }
+
+    .waveform-wrap {
+      margin-top: 0.7rem; height: 44px; border-radius: 3px;
+      background: var(--cream); overflow: hidden; display: none;
+      border: 1px solid rgba(201,145,61,0.2);
+    }
+    .waveform-wrap.visible { display: block; }
+    canvas#waveform { width: 100%; height: 100%; display: block; }
+
+    .audio-preview {
+      margin-top: 0.7rem; display: none; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    }
+    .audio-preview.visible { display: flex; }
+    .audio-preview audio {
+      height: 36px; flex: 1; min-width: 150px; accent-color: var(--gold);
+    }
+    .btn-clear-audio {
+      background: none; border: none; color: rgba(107,63,30,0.4);
+      cursor: pointer; font-size: 0.85rem; padding: 0.4rem 0.5rem;
+      transition: color 0.2s; white-space: nowrap; min-height: 44px;
+    }
+    .btn-clear-audio:active { color: var(--red-rec); }
+
+    /* ── BOUTON AJOUTER ──────────────────────────────────────── */
+    .btn-add {
+      width: 100%; height: 48px;
+      background: var(--brown-dark); color: var(--gold-light);
+      border: none; border-radius: 3px;
+      font-family: 'Lato', sans-serif; font-size: 0.8rem;
+      letter-spacing: 0.2rem; text-transform: uppercase; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-add:active { background: var(--brown-mid); }
+
+    .feedback {
+      text-align: center; font-size: 0.82rem; color: var(--brown-light);
+      min-height: 1.2em; margin-top: 0.6rem; font-style: italic;
+    }
+    .feedback.success { color: var(--green-ok); }
+    .feedback.error   { color: var(--red-rec); }
+
+    /* ── LISTE ───────────────────────────────────────────────── */
+    .dict-section { max-width: 580px; margin: 0 auto; }
+    .dict-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.9rem; }
+    .dict-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-style: italic; color: var(--brown-mid); }
+    .count-badge { font-size: 0.72rem; color: var(--brown-light); letter-spacing: 0.1rem; }
+
+    .search-wrap { position: relative; margin-bottom: 1rem; }
+    .search-wrap input {
+      width: 100%; background: var(--paper);
+      border: 1px solid rgba(107,63,30,0.2); border-radius: 3px;
+      padding: 0.55rem 0.85rem 0.55rem 2.2rem;
+      font-size: 16px; font-family: 'Lato', sans-serif; color: var(--ink);
+      outline: none; transition: border-color 0.2s; min-height: 44px;
+    }
+    .search-wrap input:focus { border-color: var(--gold); }
+    .search-icon { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--brown-light); font-size: 0.85rem; pointer-events: none; }
+
+    #word-list { list-style: none; }
+
+    .word-item {
+      background: var(--paper);
+      border: 1px solid rgba(201,145,61,0.18);
+      border-radius: 3px;
+      padding: 0.75rem 0.9rem;
+      margin-bottom: 0.55rem;
+      animation: slideIn 0.22s ease;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+    .word-top {
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .word-fr     { font-family: 'Playfair Display', serif; font-size: 0.98rem; color: var(--brown-dark); font-weight: 700; flex: 1; }
+    .word-arrow  { color: var(--gold); font-size: 0.85rem; flex-shrink: 0; }
+    .word-patois { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.98rem; color: var(--brown-mid); flex: 1; text-align: right; }
+    .btn-delete  {
+      background: none; border: none; color: rgba(107,63,30,0.3); cursor: pointer;
+      font-size: 1rem; padding: 0; flex-shrink: 0;
+      width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+      transition: color 0.2s; margin-right: -0.4rem;
+    }
+    .btn-delete:active { color: var(--red-rec); }
+
+    .word-audio {
+      margin-top: 0.45rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .audio-icon    { font-size: 0.75rem; color: var(--gold); flex-shrink: 0; }
+    .audio-loading { font-size: 0.8rem; color: var(--brown-light); font-style: italic; }
+    .word-audio audio { height: 32px; flex: 1; accent-color: var(--gold); }
+
+    .empty-state {
+      text-align: center; padding: 2.5rem 1rem;
+      color: var(--brown-light); font-style: italic; font-size: 0.95rem; opacity: 0.7;
+    }
+
+    .export-btn {
+      display: block; margin: 1.3rem auto 0;
+      background: none; border: 1px solid rgba(107,63,30,0.3); border-radius: 3px;
+      padding: 0 1.4rem; height: 44px; line-height: 44px;
+      font-size: 0.75rem; letter-spacing: 0.15rem;
+      text-transform: uppercase; color: var(--brown-mid); cursor: pointer;
+      font-family: 'Lato', sans-serif; font-weight: 700; transition: all 0.2s;
+    }
+    .export-btn:active { background: var(--brown-dark); color: var(--gold-light); border-color: var(--brown-dark); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="ornament">✦ ✦ ✦</div>
+  <h1>Dictionnaire <em>Patois</em></h1>
+  <p class="subtitle">Dictionnaire sonore du Mellois</p>
+  <div class="divider"><span class="divider-icon">❧</span></div>
+  <button id="install-btn" class="install-btn" onclick="installApp()">📲 Installer l'application</button>
+</header>
+
+<!-- Formulaire d'ajout -->
+<div class="card">
+  <div class="form-row">
+    <div class="field">
+      <label for="input-fr">Français</label>
+      <input id="input-fr" type="text" placeholder="ex. grenouille…"
+             autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" />
+    </div>
+    <div class="arrow">→</div>
+    <div class="field">
+      <label for="input-patois">Patois</label>
+      <input id="input-patois" type="text" placeholder="ex. rainète…"
+             autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+    </div>
+  </div>
+
+  <!-- Enregistreur audio -->
+  <div class="audio-section">
+    <span class="audio-label">🎙 Enregistrement audio (facultatif)</span>
+    <div class="recorder-controls">
+      <button class="btn-rec start" id="btn-start" onclick="startRec()">
+        <span class="rec-dot" style="background:var(--red-rec);animation:none"></span> Enregistrer
+      </button>
+      <button class="btn-rec stop" id="btn-stop" onclick="stopRec()" disabled>
+        <span>⏹</span> Arrêter
+      </button>
+      <span class="rec-timer" id="rec-timer">0:00</span>
+    </div>
+    <div class="waveform-wrap" id="waveform-wrap">
+      <canvas id="waveform"></canvas>
+    </div>
+    <div class="audio-preview" id="audio-preview">
+      <audio id="audio-playback" controls></audio>
+      <button class="btn-clear-audio" onclick="clearAudio()">✕ Supprimer</button>
+    </div>
+  </div>
+
+  <button class="btn-add" onclick="addWord()">Ajouter au dictionnaire</button>
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<!-- Liste des mots -->
+<div class="dict-section">
+  <div class="dict-header">
+    <span class="dict-title">Les mots enregistrés</span>
+    <span class="count-badge" id="count-badge">0 mot</span>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search" placeholder="Chercher un mot…" oninput="renderList()" />
+  </div>
+  <ul id="word-list"></ul>
+  <button class="export-btn" onclick="exportJSON()">⬇ Exporter (JSON)</button>
+</div>
+
+<script>
+// ── Stockage des mots (localStorage) ────────────────────────────
+const STORAGE_KEY = 'patois_mellois_v3';
+let words = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
+}
+
+// ── IndexedDB pour les fichiers audio (Blob) ─────────────────────
+// Avantage : pas de limite de taille comme avec localStorage
+const IDB = (() => {
+  let _db = null;
+  function open() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('patois_audio', 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore('audio');
+      r.onsuccess = e => { _db = e.target.result; res(_db); };
+      r.onerror   = e => rej(e.target.error);
+    });
+  }
+  return {
+    async save(id, blob) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('audio', 'readwrite');
+        tx.objectStore('audio').put(blob, id);
+        tx.oncomplete = res;
+        tx.onerror = e => rej(e.target.error);
+      });
+    },
+    async get(id) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const r = db.transaction('audio','readonly').objectStore('audio').get(id);
+        r.onsuccess = e => res(e.target.result);
+        r.onerror   = e => rej(e.target.error);
+      });
+    },
+    async del(id) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('audio', 'readwrite');
+        tx.objectStore('audio').delete(id);
+        tx.oncomplete = res;
+        tx.onerror = e => rej(e.target.error);
+      });
+    }
+  };
+})();
+
+// Cache d'URLs d'objet en mémoire (id → objectURL)
+const urlCache = new Map();
+async function getAudioURL(id) {
+  if (urlCache.has(id)) return urlCache.get(id);
+  const blob = await IDB.get(id);
+  if (!blob) return null;
+  const url = URL.createObjectURL(blob);
+  urlCache.set(id, url);
+  return url;
+}
+
+// ── Migration depuis l'ancienne version (base64 dans localStorage) ──
+async function migrateFromV2() {
+  const old = localStorage.getItem('patois_mellois_v2');
+  if (!old) return;
+  try {
+    const oldWords = JSON.parse(old);
+    const migrated = [];
+    for (const w of oldWords) {
+      const newWord = { fr: w.fr, patois: w.patois, id: w.id, hasAudio: false };
+      if (w.audio) {
+        try {
+          const res = await fetch(w.audio);
+          const blob = await res.blob();
+          await IDB.save(w.id, blob);
+          newWord.hasAudio = true;
+        } catch (e) { console.warn('Migration audio échouée pour', w.fr); }
+      }
+      migrated.push(newWord);
+    }
+    words = migrated;
+    save();
+    localStorage.removeItem('patois_mellois_v2');
+    console.log('Migration v2 → v3 : ' + migrated.length + ' mots');
+  } catch (e) { console.error('Migration échouée', e); }
+}
+
+// ── Retour visuel ─────────────────────────────────────────────────
+function showFeedback(msg, type = '') {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = 'feedback ' + type;
+  setTimeout(() => { el.textContent = ''; el.className = 'feedback'; }, 3000);
+}
+
+// ── Enregistreur audio ────────────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks   = [];
+let audioBlob     = null;
+let timerInterval = null;
+let timerSec      = 0;
+let animFrame     = null;
+let analyser      = null;
+let audioCtx      = null;
+
+function fmtTime(s) {
+  return Math.floor(s / 60) + ':' + (s % 60).toString().padStart(2, '0');
+}
+
+async function startRec() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Visualisation de la forme d'onde
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    drawWaveform();
+
+    audioChunks = [];
+    // Choisir le meilleur format compatible Android Chrome
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/mp4',
+      ''
+    ];
+    const mimeType = mimeTypes.find(m => !m || MediaRecorder.isTypeSupported(m));
+    const options = mimeType ? { mimeType } : {};
+
+    mediaRecorder = new MediaRecorder(stream, options);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (audioCtx) { audioCtx.close(); audioCtx = null; }
+      cancelAnimationFrame(animFrame);
+      const type = mediaRecorder.mimeType || 'audio/webm';
+      audioBlob = new Blob(audioChunks, { type });
+      const url = URL.createObjectURL(audioBlob);
+      document.getElementById('audio-playback').src = url;
+      document.getElementById('audio-preview').classList.add('visible');
+      document.getElementById('waveform-wrap').classList.remove('visible');
+    };
+    mediaRecorder.start(100);
+
+    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-stop').disabled = false;
+    document.getElementById('waveform-wrap').classList.add('visible');
+    document.getElementById('audio-preview').classList.remove('visible');
+
+    timerSec = 0;
+    document.getElementById('rec-timer').textContent = fmtTime(0);
+    document.getElementById('rec-timer').classList.add('visible');
+    timerInterval = setInterval(() => {
+      timerSec++;
+      document.getElementById('rec-timer').textContent = fmtTime(timerSec);
+      if (timerSec >= 120) stopRec(); // limite 2 min
+    }, 1000);
+
+  } catch (err) {
+    showFeedback("Impossible d'accéder au microphone.", 'error');
+    console.error(err);
+  }
+}
+
+function stopRec() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  clearInterval(timerInterval);
+  document.getElementById('rec-timer').classList.remove('visible');
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+}
+
+function clearAudio() {
+  audioBlob = null;
+  document.getElementById('audio-preview').classList.remove('visible');
+  const p = document.getElementById('audio-playback');
+  if (p.src) URL.revokeObjectURL(p.src);
+  p.src = '';
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+}
+
+function drawWaveform() {
+  const canvas = document.getElementById('waveform');
+  const wrap   = document.getElementById('waveform-wrap');
+  canvas.width  = wrap.offsetWidth  || 300;
+  canvas.height = wrap.offsetHeight || 44;
+  const ctx = canvas.getContext('2d');
+  function draw() {
+    animFrame = requestAnimationFrame(draw);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteTimeDomainData(buf);
+    ctx.fillStyle = '#f5f0e8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth   = 2;
+    ctx.strokeStyle = '#c9913d';
+    ctx.beginPath();
+    const slice = canvas.width / buf.length;
+    let x = 0;
+    buf.forEach((v, i) => {
+      const y = (v / 128) * (canvas.height / 2);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      x += slice;
+    });
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+  }
+  draw();
+}
+
+// ── Ajouter un mot ────────────────────────────────────────────────
+async function addWord() {
+  const fr     = document.getElementById('input-fr').value.trim();
+  const patois = document.getElementById('input-patois').value.trim();
+  if (!fr || !patois) {
+    showFeedback('Veuillez remplir les deux champs.', 'error'); return;
+  }
+  if (words.some(w => w.fr.toLowerCase() === fr.toLowerCase())) {
+    showFeedback(`"${fr}" existe déjà dans le dictionnaire.`, 'error'); return;
+  }
+
+  const id = Date.now();
+  const hasAudio = !!audioBlob;
+  if (hasAudio) {
+    try { await IDB.save(id, audioBlob); }
+    catch (e) { console.error('Sauvegarde audio échouée', e); }
+  }
+
+  words.unshift({ fr, patois, id, hasAudio });
+  save();
+  await renderList();
+
+  showFeedback(`"${fr}" ajouté avec succès !`, 'success');
+  document.getElementById('input-fr').value   = '';
+  document.getElementById('input-patois').value = '';
+  clearAudio();
+  document.getElementById('input-fr').focus();
+}
+
+// ── Supprimer un mot ──────────────────────────────────────────────
+async function deleteWord(id) {
+  words = words.filter(w => w.id !== id);
+  try { await IDB.del(id); } catch(e) { /* silencieux */ }
+  if (urlCache.has(id)) {
+    URL.revokeObjectURL(urlCache.get(id));
+    urlCache.delete(id);
+  }
+  save();
+  await renderList();
+}
+
+// ── Affichage de la liste ─────────────────────────────────────────
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function renderList() {
+  const query    = document.getElementById('search').value.toLowerCase();
+  const filtered = words.filter(w =>
+    w.fr.toLowerCase().includes(query) || w.patois.toLowerCase().includes(query)
+  );
+
+  document.getElementById('count-badge').textContent =
+    words.length + (words.length <= 1 ? ' mot' : ' mots');
+
+  const list = document.getElementById('word-list');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state">${
+      words.length === 0
+        ? "Aucun mot enregistré pour l'instant."
+        : 'Aucun résultat pour cette recherche.'
+    }</div>`;
+    return;
+  }
+
+  list.innerHTML = '';
+  for (const w of filtered) {
+    const li = document.createElement('li');
+    li.className = 'word-item';
+    li.innerHTML = `
+      <div class="word-top">
+        <span class="word-fr">${escHtml(w.fr)}</span>
+        <span class="word-arrow">→</span>
+        <span class="word-patois">${escHtml(w.patois)}</span>
+        <button class="btn-delete" title="Supprimer" data-id="${w.id}">✕</button>
+      </div>
+      ${w.hasAudio
+        ? `<div class="word-audio" id="aud-${w.id}">
+             <span class="audio-icon">🔊</span>
+             <span class="audio-loading">chargement…</span>
+           </div>`
+        : ''}
+    `;
+    li.querySelector('.btn-delete').addEventListener('click', () => deleteWord(w.id));
+    list.appendChild(li);
+
+    if (w.hasAudio) {
+      // Chargement asynchrone de l'audio depuis IndexedDB
+      getAudioURL(w.id).then(url => {
+        const div = document.getElementById('aud-' + w.id);
+        if (!div) return;
+        if (url) {
+          div.innerHTML = `<span class="audio-icon">🔊</span>
+                           <audio controls src="${url}"></audio>`;
+        } else {
+          div.style.display = 'none';
+        }
+      });
+    }
+  }
+}
+
+// ── Export JSON ───────────────────────────────────────────────────
+function exportJSON() {
+  const data = words.map(({ fr, patois, id, hasAudio }) =>
+    ({ fr, patois, id, has_audio: !!hasAudio })
+  );
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'patois-mellois.json';
+  a.click();
+}
+
+// ── PWA : prompt d'installation ───────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-btn').style.display = 'inline-block';
+});
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('install-btn').style.display = 'none';
+  });
+}
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-btn').style.display = 'none';
+  deferredPrompt = null;
+});
+
+// ── Service Worker ────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(err => console.warn('SW non enregistré :', err));
+  });
+}
+
+// ── Touche Entrée ─────────────────────────────────────────────────
+['input-fr', 'input-patois'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') addWord();
+  });
+});
+
+// ── Initialisation ────────────────────────────────────────────────
+async function init() {
+  await migrateFromV2(); // migration transparente si données v2 existantes
+  await renderList();
+}
+init();
+</script>
+</body>
+</html>
