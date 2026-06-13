@@ -271,6 +271,66 @@
       font-family: 'Lato', sans-serif; font-weight: 700; transition: all 0.2s;
     }
     .export-btn:active { background: var(--brown-dark); color: var(--gold-light); border-color: var(--brown-dark); }
+
+    /* ── MODALE DE CONFIRMATION ──────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,16,8,0.55);
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 1.2rem;
+      z-index: 1000;
+      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.15s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+    .modal-card {
+      background: var(--paper);
+      border: 1px solid rgba(201,145,61,0.3);
+      border-radius: 4px;
+      box-shadow: 0 10px 40px rgba(44,26,14,0.28);
+      max-width: 320px; width: 100%;
+      padding: 1.6rem 1.4rem;
+      text-align: center;
+      position: relative;
+      animation: popIn 0.18s ease;
+    }
+    @keyframes popIn { from { transform: scale(0.94); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+    .modal-card::before {
+      content: ''; position: absolute; inset: 6px;
+      border: 1px solid rgba(201,145,61,0.12); border-radius: 2px; pointer-events: none;
+    }
+
+    .modal-icon  { font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.85; }
+    .modal-title {
+      font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700;
+      color: var(--brown-dark); margin-bottom: 0.4rem;
+    }
+    .modal-word {
+      font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.05rem;
+      color: var(--brown-mid); margin-bottom: 1.4rem; word-break: break-word;
+    }
+
+    .modal-actions { display: flex; gap: 0.7rem; }
+    .modal-btn {
+      flex: 1; height: 46px;
+      border: none; border-radius: 3px; cursor: pointer;
+      font-family: 'Lato', sans-serif; font-size: 0.78rem;
+      font-weight: 700; letter-spacing: 0.1rem; text-transform: uppercase;
+      transition: all 0.15s;
+    }
+    .modal-btn-no {
+      background: var(--cream); color: var(--brown-mid);
+      border: 1px solid rgba(107,63,30,0.25);
+    }
+    .modal-btn-no:active { background: rgba(107,63,30,0.12); }
+    .modal-btn-yes { background: var(--red-rec); color: #fff; }
+    .modal-btn-yes:active { background: #a93226; }
   </style>
 </head>
 <body>
@@ -336,6 +396,19 @@
   </div>
   <ul id="word-list"></ul>
   <button class="export-btn" onclick="exportJSON()">⬇ Exporter (JSON)</button>
+</div>
+
+<!-- Modale de confirmation de suppression -->
+<div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-card">
+    <p class="modal-icon">🗑</p>
+    <p class="modal-title" id="modal-title">Supprimer ce mot ?</p>
+    <p class="modal-word" id="modal-word"></p>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-no" id="modal-btn-no">Non</button>
+      <button class="modal-btn modal-btn-yes" id="modal-btn-yes">Oui, supprimer</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -584,8 +657,26 @@ async function addWord() {
   document.getElementById('input-fr').focus();
 }
 
-// ── Supprimer un mot ──────────────────────────────────────────────
-async function deleteWord(id) {
+// ── Supprimer un mot (avec confirmation) ───────────────────────────
+let pendingDeleteId = null;
+
+function requestDelete(id, fr) {
+  pendingDeleteId = id;
+  document.getElementById('modal-word').textContent = `« ${fr} »`;
+  document.getElementById('confirm-modal').classList.add('visible');
+  document.getElementById('modal-btn-no').focus();
+}
+
+function closeConfirmModal() {
+  pendingDeleteId = null;
+  document.getElementById('confirm-modal').classList.remove('visible');
+}
+
+async function confirmDeleteWord() {
+  const id = pendingDeleteId;
+  closeConfirmModal();
+  if (id == null) return;
+
   words = words.filter(w => w.id !== id);
   try { await IDB.del(id); } catch(e) { /* silencieux */ }
   if (urlCache.has(id)) {
@@ -595,6 +686,16 @@ async function deleteWord(id) {
   save();
   await renderList();
 }
+
+// Fermer la modale : clic sur le fond, bouton "Non" ou touche Échap
+document.getElementById('confirm-modal').addEventListener('click', e => {
+  if (e.target.id === 'confirm-modal') closeConfirmModal();
+});
+document.getElementById('modal-btn-no').addEventListener('click', closeConfirmModal);
+document.getElementById('modal-btn-yes').addEventListener('click', confirmDeleteWord);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeConfirmModal();
+});
 
 // ── Affichage de la liste ─────────────────────────────────────────
 function escHtml(s) {
@@ -639,7 +740,7 @@ async function renderList() {
            </div>`
         : ''}
     `;
-    li.querySelector('.btn-delete').addEventListener('click', () => deleteWord(w.id));
+    li.querySelector('.btn-delete').addEventListener('click', () => requestDelete(w.id, w.fr));
     list.appendChild(li);
 
     if (w.hasAudio) {
