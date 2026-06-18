@@ -407,7 +407,7 @@
 </header>
 
 <!-- Formulaire d'ajout -->
-<div class="card">
+<div class="card" id="add-card">
   <div class="form-row">
     <div class="field">
       <label for="input-fr">Français</label>
@@ -449,6 +449,9 @@
 
 <!-- Liste des mots -->
 <div class="dict-section">
+  <p class="readonly-note" id="readonly-note" style="display:none; text-align:center; font-size:0.78rem; color:var(--brown-light); font-style:italic; margin-bottom:1rem;">
+    📖 Mode lecture seule — vous consultez le dictionnaire partagé sans pouvoir le modifier.
+  </p>
   <div class="dict-header">
     <span class="dict-title">Les mots enregistrés</span>
     <span class="count-badge" id="count-badge">0 mot</span>
@@ -464,17 +467,17 @@
 
   <div class="sync-panel" id="sync-panel">
     <p class="sync-help">
-      Pour partager ce dictionnaire avec d'autres contributeurs, connectez l'app à votre dépôt GitHub.
-      Chaque contributeur doit être ajouté comme collaborateur du dépôt et utiliser son propre jeton
-      personnel (fine-grained, permission Contents : lecture/écriture, limité à ce dépôt).
+      Pour accéder au dictionnaire partagé, entrez le nom du dépôt GitHub.<br>
+      — <strong>Sans jeton</strong> : lecture seule (vous voyez les mots des autres, sans pouvoir en ajouter).<br>
+      — <strong>Avec jeton</strong> : vous pouvez aussi ajouter et supprimer des mots.
     </p>
     <div class="sync-field">
       <label for="gh-repo">Dépôt (propriétaire/nom)</label>
       <input id="gh-repo" type="text" placeholder="ex. valentin/patois-mellois" autocomplete="off" autocapitalize="none" spellcheck="false" />
     </div>
     <div class="sync-field">
-      <label for="gh-token">Jeton d'accès personnel</label>
-      <input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+      <label for="gh-token">Jeton d'accès personnel <span style="font-weight:400; text-transform:none; letter-spacing:0;">(facultatif — nécessaire pour contribuer)</span></label>
+      <input id="gh-token" type="password" placeholder="github_pat_… (laisser vide pour lecture seule)" autocomplete="off" autocapitalize="none" spellcheck="false" />
     </div>
     <div class="sync-actions">
       <button class="btn-sync-action btn-sync-connect" onclick="connectGitHub()">Connecter</button>
@@ -645,13 +648,11 @@ function blobToBase64Raw(blob) {
 async function ghRequest(path, options = {}) {
   const cfg = ghConfig();
   if (!cfg) throw new Error('not_configured');
+  const headers = { 'Accept': 'application/vnd.github+json', ...(options.headers || {}) };
+  if (cfg.token) headers['Authorization'] = `Bearer ${cfg.token}`;
   return fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`, {
     ...options,
-    headers: {
-      'Authorization': `Bearer ${cfg.token}`,
-      'Accept': 'application/vnd.github+json',
-      ...(options.headers || {})
-    }
+    headers
   });
 }
 
@@ -717,17 +718,28 @@ function setSyncStatus(state, text) {
   document.getElementById('sync-status-text').textContent = text;
 }
 
+function isReadOnly() {
+  const cfg = ghConfig();
+  return !!cfg && !cfg.token;
+}
+
 function updateSyncUI() {
   const cfg = ghConfig();
   document.getElementById('btn-sync-disconnect').style.display = cfg ? 'inline-block' : 'none';
   document.getElementById('btn-sync-now').style.display = cfg ? 'block' : 'none';
   if (cfg) {
     document.getElementById('gh-repo').value = `${cfg.owner}/${cfg.repo}`;
-    document.getElementById('gh-token').value = cfg.token;
-    setSyncStatus('connected', `Connecté à ${cfg.owner}/${cfg.repo}`);
+    document.getElementById('gh-token').value = cfg.token || '';
+    setSyncStatus('connected', cfg.token
+      ? `Connecté à ${cfg.owner}/${cfg.repo}`
+      : `Lecture seule · ${cfg.owner}/${cfg.repo}`);
   } else {
     setSyncStatus('off', 'Mode local uniquement');
   }
+
+  // En lecture seule : on masque l'ajout et la suppression, le dictionnaire reste consultable
+  document.getElementById('add-card').style.display = isReadOnly() ? 'none' : 'block';
+  document.getElementById('readonly-note').style.display = isReadOnly() ? 'block' : 'none';
 }
 
 function toggleSyncPanel() {
@@ -738,36 +750,38 @@ async function connectGitHub() {
   const raw   = document.getElementById('gh-repo').value.trim();
   const token = document.getElementById('gh-token').value.trim();
   const parts = raw.split('/').map(s => s.trim()).filter(Boolean);
-  if (parts.length !== 2 || !token) {
-    showFeedback('Format attendu : proprietaire/nom-du-depot, avec un jeton.', 'error');
+  if (parts.length !== 2) {
+    showFeedback('Format attendu : proprietaire/nom-du-depot.', 'error');
     return;
   }
-  const cfg = { owner: parts[0], repo: parts[1], token };
+  const cfg = { owner: parts[0], repo: parts[1], token: token || null };
   setSyncStatus('syncing', 'Vérification…');
   try {
-    const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}`, {
-      headers: { 'Authorization': `Bearer ${cfg.token}`, 'Accept': 'application/vnd.github+json' }
-    });
+    const headers = { 'Accept': 'application/vnd.github+json' };
+    if (cfg.token) headers['Authorization'] = `Bearer ${cfg.token}`;
+    const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}`, { headers });
     if (!res.ok) throw new Error('repo_unreachable_' + res.status);
 
     ghSaveConfig(cfg);
     updateSyncUI();
 
-    const file = await ghGetFile(GH_DATA_PATH);
-    if (!file && words.length > 0) {
-      const publish = confirm(
-        `Le dictionnaire partagé est vide. Voulez-vous y publier vos ${words.length} mot(s) local(aux) (avec leur audio) ?`
-      );
-      if (publish) await publishLocalWordsToGitHub();
+    if (cfg.token) {
+      const file = await ghGetFile(GH_DATA_PATH);
+      if (!file && words.length > 0) {
+        const publish = confirm(
+          `Le dictionnaire partagé est vide. Voulez-vous y publier vos ${words.length} mot(s) local(aux) (avec leur audio) ?`
+        );
+        if (publish) await publishLocalWordsToGitHub();
+      }
     }
     await pullRemoteWords();
-    showFeedback('Connecté au dépôt GitHub !', 'success');
+    showFeedback(cfg.token ? 'Connecté au dépôt GitHub !' : 'Connecté en lecture seule.', 'success');
   } catch (e) {
     console.error(e);
     ghClearConfig();
     updateSyncUI();
     setSyncStatus('error', 'Connexion impossible');
-    showFeedback('Connexion impossible : vérifiez le dépôt et le jeton.', 'error');
+    showFeedback('Connexion impossible : vérifiez le nom du dépôt et le jeton.', 'error');
   }
 }
 
@@ -1092,6 +1106,7 @@ async function renderList() {
     words.length + (words.length <= 1 ? ' mot' : ' mots');
 
   const list = document.getElementById('word-list');
+  const readOnly = isReadOnly();
 
   if (filtered.length === 0) {
     list.innerHTML = `<div class="empty-state">${
@@ -1111,7 +1126,7 @@ async function renderList() {
         <span class="word-fr">${escHtml(w.fr)}</span>
         <span class="word-arrow">→</span>
         <span class="word-patois">${escHtml(w.patois)}</span>
-        <button class="btn-delete" title="Supprimer" data-id="${w.id}">✕</button>
+        ${readOnly ? '' : `<button class="btn-delete" title="Supprimer" data-id="${w.id}">✕</button>`}
       </div>
       ${w.hasAudio
         ? `<div class="word-audio" id="aud-${w.id}">
@@ -1120,7 +1135,9 @@ async function renderList() {
            </div>`
         : ''}
     `;
-    li.querySelector('.btn-delete').addEventListener('click', () => requestDelete(w.id, w.fr));
+    if (!readOnly) {
+      li.querySelector('.btn-delete').addEventListener('click', () => requestDelete(w.id, w.fr));
+    }
     list.appendChild(li);
 
     if (w.hasAudio) {
