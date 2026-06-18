@@ -331,6 +331,69 @@
     .modal-btn-no:active { background: rgba(107,63,30,0.12); }
     .modal-btn-yes { background: var(--red-rec); color: #fff; }
     .modal-btn-yes:active { background: #a93226; }
+
+    /* ── SYNCHRONISATION GITHUB ──────────────────────────────── */
+    .sync-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.6rem; margin-bottom: 0.9rem; flex-wrap: wrap;
+    }
+    .sync-status { display: flex; align-items: center; gap: 0.45rem; font-size: 0.72rem; color: var(--brown-light); }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(107,63,30,0.3); flex-shrink: 0; }
+    .sync-dot.connected { background: var(--green-ok); }
+    .sync-dot.syncing { background: var(--gold); animation: pulse 1s ease-in-out infinite; }
+    .sync-dot.error { background: var(--red-rec); }
+
+    .sync-toggle {
+      background: none; border: none; color: var(--brown-mid);
+      font-size: 0.72rem; letter-spacing: 0.08rem; text-transform: uppercase;
+      font-weight: 700; cursor: pointer; padding: 0.3rem 0.1rem;
+      font-family: 'Lato', sans-serif;
+      text-decoration: underline; text-decoration-color: rgba(107,63,30,0.3);
+    }
+
+    .sync-panel {
+      display: none;
+      background: rgba(201,145,61,0.05);
+      border: 1px dashed rgba(201,145,61,0.35);
+      border-radius: 4px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1.2rem;
+    }
+    .sync-panel.open { display: block; }
+    .sync-help { font-size: 0.78rem; color: var(--brown-mid); line-height: 1.5; margin-bottom: 0.9rem; }
+
+    .sync-field { margin-bottom: 0.8rem; }
+    .sync-field label {
+      display: block; font-size: 0.68rem; letter-spacing: 0.14rem; text-transform: uppercase;
+      color: var(--brown-light); margin-bottom: 0.35rem; font-weight: 700;
+    }
+    .sync-field input {
+      width: 100%; background: var(--cream);
+      border: 1px solid rgba(107,63,30,0.25); border-radius: 3px;
+      padding: 0.6rem 0.8rem; font-family: 'Lato', sans-serif;
+      font-size: 15px; color: var(--ink); outline: none; min-height: 42px;
+    }
+    .sync-field input:focus { border-color: var(--gold); }
+
+    .sync-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .btn-sync-action {
+      flex: 1; min-width: 120px; height: 42px;
+      border: none; border-radius: 3px; cursor: pointer;
+      font-family: 'Lato', sans-serif; font-size: 0.74rem;
+      font-weight: 700; letter-spacing: 0.06rem; text-transform: uppercase;
+    }
+    .btn-sync-connect { background: var(--brown-dark); color: var(--gold-light); }
+    .btn-sync-connect:active { background: var(--brown-mid); }
+    .btn-sync-disconnect { background: var(--cream); color: var(--brown-mid); border: 1px solid rgba(107,63,30,0.25); }
+    .btn-sync-disconnect:active { background: rgba(107,63,30,0.12); }
+
+    .btn-sync-now {
+      display: block; width: 100%; height: 42px; margin-top: 0.7rem;
+      background: var(--gold); color: var(--brown-dark); border: none; border-radius: 3px;
+      font-family: 'Lato', sans-serif; font-size: 0.74rem; font-weight: 700;
+      letter-spacing: 0.06rem; text-transform: uppercase; cursor: pointer;
+    }
+    .btn-sync-now:active { background: var(--gold-light); }
   </style>
 </head>
 <body>
@@ -354,7 +417,7 @@
     <div class="arrow">→</div>
     <div class="field">
       <label for="input-patois">Patois</label>
-      <input id="input-patois" type="text" placeholder="ex. gernouille…"
+      <input id="input-patois" type="text" placeholder="ex. rainète…"
              autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
     </div>
   </div>
@@ -390,6 +453,36 @@
     <span class="dict-title">Les mots enregistrés</span>
     <span class="count-badge" id="count-badge">0 mot</span>
   </div>
+
+  <div class="sync-bar">
+    <span class="sync-status">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span id="sync-status-text">Mode local uniquement</span>
+    </span>
+    <button class="sync-toggle" id="sync-toggle" onclick="toggleSyncPanel()">⚙ Synchronisation</button>
+  </div>
+
+  <div class="sync-panel" id="sync-panel">
+    <p class="sync-help">
+      Pour partager ce dictionnaire avec d'autres contributeurs, connectez l'app à votre dépôt GitHub.
+      Chaque contributeur doit être ajouté comme collaborateur du dépôt et utiliser son propre jeton
+      personnel (fine-grained, permission Contents : lecture/écriture, limité à ce dépôt).
+    </p>
+    <div class="sync-field">
+      <label for="gh-repo">Dépôt (propriétaire/nom)</label>
+      <input id="gh-repo" type="text" placeholder="ex. valentin/patois-mellois" autocomplete="off" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="sync-field">
+      <label for="gh-token">Jeton d'accès personnel</label>
+      <input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="sync-actions">
+      <button class="btn-sync-action btn-sync-connect" onclick="connectGitHub()">Connecter</button>
+      <button class="btn-sync-action btn-sync-disconnect" id="btn-sync-disconnect" onclick="disconnectGitHub()" style="display:none">Déconnecter</button>
+    </div>
+    <button class="btn-sync-now" id="btn-sync-now" onclick="manualSync()" style="display:none">🔄 Synchroniser maintenant</button>
+  </div>
+
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
     <input type="text" id="search" placeholder="Chercher un mot…" oninput="renderList()" />
@@ -465,9 +558,26 @@ const IDB = (() => {
 
 // Cache d'URLs d'objet en mémoire (id → objectURL)
 const urlCache = new Map();
-async function getAudioURL(id) {
+async function getAudioURL(id, audioExt) {
   if (urlCache.has(id)) return urlCache.get(id);
-  const blob = await IDB.get(id);
+  let blob = await IDB.get(id).catch(() => null);
+
+  if (!blob) {
+    // Pas en cache local : on tente de le récupérer depuis le dépôt GitHub partagé
+    const cfg = ghConfig();
+    if (cfg) {
+      try {
+        const ext = audioExt || 'webm';
+        const url = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${GH_BRANCH}/data/audio/${id}.${ext}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          blob = await res.blob();
+          IDB.save(id, blob).catch(() => {}); // mise en cache locale pour la prochaine fois
+        }
+      } catch (e) { /* hors-ligne ou fichier introuvable */ }
+    }
+  }
+
   if (!blob) return null;
   const url = URL.createObjectURL(blob);
   urlCache.set(id, url);
@@ -500,7 +610,225 @@ async function migrateFromV2() {
   } catch (e) { console.error('Migration échouée', e); }
 }
 
-// ── Retour visuel ─────────────────────────────────────────────────
+// ── Synchronisation GitHub (mode dictionnaire partagé) ──────────────
+const GH_CONFIG_KEY = 'patois_github_config';
+const GH_DATA_PATH  = 'data/words.json';
+const GH_BRANCH     = 'main';
+
+function ghConfig() {
+  try { return JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || 'null'); }
+  catch { return null; }
+}
+function ghSaveConfig(cfg) { localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg)); }
+function ghClearConfig() { localStorage.removeItem(GH_CONFIG_KEY); }
+
+function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
+function base64ToUtf8(b64) { return decodeURIComponent(escape(atob(b64))); }
+
+function extFromMime(mime) {
+  if (!mime) return 'webm';
+  if (mime.includes('webm')) return 'webm';
+  if (mime.includes('ogg'))  return 'ogg';
+  if (mime.includes('mp4'))  return 'm4a';
+  return 'webm';
+}
+
+function blobToBase64Raw(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.slice(reader.result.indexOf(',') + 1));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function ghRequest(path, options = {}) {
+  const cfg = ghConfig();
+  if (!cfg) throw new Error('not_configured');
+  return fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${cfg.token}`,
+      'Accept': 'application/vnd.github+json',
+      ...(options.headers || {})
+    }
+  });
+}
+
+// Retourne {sha, content} ou null si le fichier n'existe pas encore (404).
+// Lance une erreur pour tout autre problème (réseau, auth, etc.).
+async function ghGetFile(path) {
+  const res = await ghRequest(`${path}?ref=${GH_BRANCH}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('gh_get_failed_' + res.status);
+  const data = await res.json();
+  return { sha: data.sha, content: data.content };
+}
+
+async function ghPutFile(path, base64Content, message, sha) {
+  const body = { message, content: base64Content, branch: GH_BRANCH };
+  if (sha) body.sha = sha;
+  const res = await ghRequest(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error('gh_put_failed_' + res.status + ': ' + (err.message || ''));
+  }
+  return (await res.json()).content.sha;
+}
+
+async function ghDeleteFile(path, message, sha) {
+  const res = await ghRequest(path, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, sha, branch: GH_BRANCH })
+  });
+  return res.ok;
+}
+
+// Applique mutateFn(remoteWords) -> nouveauxRemoteWords, avec retry en cas
+// de conflit (409) si quelqu'un d'autre a modifié le fichier entre-temps.
+async function pushWordsSafe(mutateFn, message, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const file = await ghGetFile(GH_DATA_PATH);
+    const remoteWords = file ? JSON.parse(base64ToUtf8(file.content)) : [];
+    const sha = file ? file.sha : null;
+
+    const updated = mutateFn(remoteWords.slice());
+    const content = utf8ToBase64(JSON.stringify(updated, null, 2));
+    try {
+      await ghPutFile(GH_DATA_PATH, content, message, sha);
+      words = updated;
+      save();
+      return true;
+    } catch (e) {
+      if (String(e.message).startsWith('gh_put_failed_409') && attempt < retries - 1) continue;
+      throw e;
+    }
+  }
+  throw new Error('push_failed_after_retries');
+}
+
+function setSyncStatus(state, text) {
+  document.getElementById('sync-dot').className = 'sync-dot' + (state !== 'off' ? ' ' + state : '');
+  document.getElementById('sync-status-text').textContent = text;
+}
+
+function updateSyncUI() {
+  const cfg = ghConfig();
+  document.getElementById('btn-sync-disconnect').style.display = cfg ? 'inline-block' : 'none';
+  document.getElementById('btn-sync-now').style.display = cfg ? 'block' : 'none';
+  if (cfg) {
+    document.getElementById('gh-repo').value = `${cfg.owner}/${cfg.repo}`;
+    document.getElementById('gh-token').value = cfg.token;
+    setSyncStatus('connected', `Connecté à ${cfg.owner}/${cfg.repo}`);
+  } else {
+    setSyncStatus('off', 'Mode local uniquement');
+  }
+}
+
+function toggleSyncPanel() {
+  document.getElementById('sync-panel').classList.toggle('open');
+}
+
+async function connectGitHub() {
+  const raw   = document.getElementById('gh-repo').value.trim();
+  const token = document.getElementById('gh-token').value.trim();
+  const parts = raw.split('/').map(s => s.trim()).filter(Boolean);
+  if (parts.length !== 2 || !token) {
+    showFeedback('Format attendu : proprietaire/nom-du-depot, avec un jeton.', 'error');
+    return;
+  }
+  const cfg = { owner: parts[0], repo: parts[1], token };
+  setSyncStatus('syncing', 'Vérification…');
+  try {
+    const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}`, {
+      headers: { 'Authorization': `Bearer ${cfg.token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!res.ok) throw new Error('repo_unreachable_' + res.status);
+
+    ghSaveConfig(cfg);
+    updateSyncUI();
+
+    const file = await ghGetFile(GH_DATA_PATH);
+    if (!file && words.length > 0) {
+      const publish = confirm(
+        `Le dictionnaire partagé est vide. Voulez-vous y publier vos ${words.length} mot(s) local(aux) (avec leur audio) ?`
+      );
+      if (publish) await publishLocalWordsToGitHub();
+    }
+    await pullRemoteWords();
+    showFeedback('Connecté au dépôt GitHub !', 'success');
+  } catch (e) {
+    console.error(e);
+    ghClearConfig();
+    updateSyncUI();
+    setSyncStatus('error', 'Connexion impossible');
+    showFeedback('Connexion impossible : vérifiez le dépôt et le jeton.', 'error');
+  }
+}
+
+function disconnectGitHub() {
+  ghClearConfig();
+  document.getElementById('gh-repo').value = '';
+  document.getElementById('gh-token').value = '';
+  updateSyncUI();
+  showFeedback('Déconnecté du mode partagé. Vos mots restent en local.', '');
+}
+
+async function publishLocalWordsToGitHub() {
+  setSyncStatus('syncing', 'Publication des mots locaux…');
+  const toPublish = [];
+  for (const w of words) {
+    const entry = { fr: w.fr, patois: w.patois, id: w.id, hasAudio: false, audioExt: null };
+    if (w.hasAudio) {
+      try {
+        const blob = await IDB.get(w.id);
+        if (blob) {
+          const ext = extFromMime(blob.type);
+          const base64 = await blobToBase64Raw(blob);
+          await ghPutFile(`data/audio/${w.id}.${ext}`, base64, `Publication audio : ${w.fr}`, null);
+          entry.hasAudio = true;
+          entry.audioExt = ext;
+        }
+      } catch (e) { console.warn('Échec publication audio pour', w.fr, e); }
+    }
+    toPublish.push(entry);
+  }
+  await pushWordsSafe(remoteWords => {
+    const existingIds = new Set(remoteWords.map(w => w.id));
+    return [...remoteWords, ...toPublish.filter(w => !existingIds.has(w.id))];
+  }, `Publication initiale de ${toPublish.length} mot(s)`);
+}
+
+async function pullRemoteWords() {
+  const cfg = ghConfig();
+  if (!cfg) return;
+  setSyncStatus('syncing', 'Synchronisation…');
+  try {
+    const file = await ghGetFile(GH_DATA_PATH);
+    words = file ? JSON.parse(base64ToUtf8(file.content)) : [];
+    save();
+    await renderList();
+    setSyncStatus('connected', `Connecté à ${cfg.owner}/${cfg.repo}`);
+  } catch (e) {
+    console.error(e);
+    setSyncStatus('error', 'Hors-ligne ou erreur de synchronisation');
+  }
+}
+
+async function manualSync() {
+  await pullRemoteWords();
+  showFeedback('Synchronisation terminée.', 'success');
+}
+
+window.addEventListener('online', () => { if (ghConfig()) pullRemoteWords(); });
+window.addEventListener('offline', () => { if (ghConfig()) setSyncStatus('error', 'Hors-ligne'); });
+
+
 function showFeedback(msg, type = '') {
   const el = document.getElementById('feedback');
   el.textContent = msg;
@@ -641,12 +969,16 @@ async function addWord() {
 
   const id = Date.now();
   const hasAudio = !!audioBlob;
+  const blobForUpload = audioBlob; // capturé avant clearAudio()
+  let audioExt = null;
   if (hasAudio) {
-    try { await IDB.save(id, audioBlob); }
+    try { await IDB.save(id, blobForUpload); }
     catch (e) { console.error('Sauvegarde audio échouée', e); }
+    audioExt = extFromMime(blobForUpload.type);
   }
 
-  words.unshift({ fr, patois, id, hasAudio });
+  const newWord = { fr, patois, id, hasAudio, audioExt };
+  words.unshift(newWord);
   save();
   await renderList();
 
@@ -655,6 +987,29 @@ async function addWord() {
   document.getElementById('input-patois').value = '';
   clearAudio();
   document.getElementById('input-fr').focus();
+
+  // Synchronisation GitHub, si le mode partagé est configuré
+  const cfg = ghConfig();
+  if (cfg) {
+    setSyncStatus('syncing', 'Envoi vers GitHub…');
+    try {
+      if (hasAudio && blobForUpload) {
+        const audioBase64 = await blobToBase64Raw(blobForUpload);
+        await ghPutFile(`data/audio/${id}.${audioExt}`, audioBase64, `Ajout audio : ${fr}`, null);
+      }
+      await pushWordsSafe(remoteWords => {
+        if (!remoteWords.some(w => w.id === id)) remoteWords.unshift(newWord);
+        return remoteWords;
+      }, `Ajout : ${fr} → ${patois}`);
+      await renderList(); // reflète aussi d'éventuels ajouts concurrents d'autres contributeurs
+      setSyncStatus('connected', `Connecté à ${cfg.owner}/${cfg.repo}`);
+      showFeedback(`"${fr}" synchronisé avec GitHub.`, 'success');
+    } catch (e) {
+      console.error(e);
+      setSyncStatus('error', 'Échec de synchronisation');
+      showFeedback("Mot ajouté localement, mais la synchronisation a échoué (vérifiez la connexion).", 'error');
+    }
+  }
 }
 
 // ── Supprimer un mot (avec confirmation) ───────────────────────────
@@ -674,6 +1029,7 @@ function closeConfirmModal() {
 
 async function confirmDeleteWord() {
   const id = pendingDeleteId;
+  const wordToDelete = words.find(w => w.id === id);
   closeConfirmModal();
   if (id == null) return;
 
@@ -685,6 +1041,30 @@ async function confirmDeleteWord() {
   }
   save();
   await renderList();
+
+  const cfg = ghConfig();
+  if (cfg) {
+    setSyncStatus('syncing', 'Suppression sur GitHub…');
+    try {
+      await pushWordsSafe(
+        remoteWords => remoteWords.filter(w => w.id !== id),
+        `Suppression : ${wordToDelete ? wordToDelete.fr : id}`
+      );
+      if (wordToDelete && wordToDelete.hasAudio) {
+        try {
+          const ext = wordToDelete.audioExt || 'webm';
+          const remoteFile = await ghGetFile(`data/audio/${id}.${ext}`);
+          if (remoteFile) await ghDeleteFile(`data/audio/${id}.${ext}`, `Suppression audio : ${wordToDelete.fr}`, remoteFile.sha);
+        } catch (e) { /* best-effort, on ignore */ }
+      }
+      await renderList();
+      setSyncStatus('connected', `Connecté à ${cfg.owner}/${cfg.repo}`);
+    } catch (e) {
+      console.error(e);
+      setSyncStatus('error', 'Échec de synchronisation');
+      showFeedback('Suppression locale effectuée, mais la synchronisation a échoué.', 'error');
+    }
+  }
 }
 
 // Fermer la modale : clic sur le fond, bouton "Non" ou touche Échap
@@ -745,7 +1125,7 @@ async function renderList() {
 
     if (w.hasAudio) {
       // Chargement asynchrone de l'audio depuis IndexedDB
-      getAudioURL(w.id).then(url => {
+      getAudioURL(w.id, w.audioExt).then(url => {
         const div = document.getElementById('aud-' + w.id);
         if (!div) return;
         if (url) {
@@ -809,7 +1189,12 @@ if ('serviceWorker' in navigator) {
 // ── Initialisation ────────────────────────────────────────────────
 async function init() {
   await migrateFromV2(); // migration transparente si données v2 existantes
-  await renderList();
+  updateSyncUI();
+  if (ghConfig() && navigator.onLine) {
+    await pullRemoteWords();
+  } else {
+    await renderList();
+  }
 }
 init();
 </script>
